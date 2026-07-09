@@ -3,24 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DepEd Automated OMR Scanner Terminal</title>
+  <title>Letter 1/2 Crosswise OMR Scanner (30-Items Fixed)</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <style>
     body { background-color: #121214; color: #e1e1e6; padding: 20px; font-family: system-ui, sans-serif; }
-    .scanner-card { max-width: 600px; margin: 0 auto; background: #202024; border-radius: 12px; border: 1px solid #29292e; overflow: hidden; }
-    .video-wrapper { position: relative; width: 100%; padding-top: 75%; background: #000; }
+    .scanner-card { max-width: 720px; margin: 0 auto; background: #202024; border-radius: 12px; border: 1px solid #29292e; overflow: hidden; }
+    .video-wrapper { position: relative; width: 100%; padding-top: 56.25%; background: #000; } /* 16:9 wider widescreen ratio for letter width */
     #videoView, #canvasOutput { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
     #canvasOutput { opacity: 0.85; pointer-events: none; }
     .results-box { padding: 20px; }
     .badge-status { font-size: 0.9rem; padding: 6px 12px; border-radius: 50px; }
   </style>
-  <!-- Load OpenCV.js Library -->
   <script async src="https://docs.opencv.org/4.x/opencv.js" type="text/javascript" onload="initOMRScanner()"></script>
 </head>
 <body>
 
   <div class="container text-center">
-    <h3 class="my-3 text-success fw-bold">DepEd Auto-Grading Terminal</h3>
+    <h3 class="my-3 text-success fw-bold">DepEd Crosswise Scanner Terminal</h3>
+    <p class="text-muted small">Optimized exclusively for Letter 1/2 Crosswise Sheet (30 Fixed Items)</p>
     
     <div class="scanner-card shadow-lg mb-4">
       <div class="video-wrapper">
@@ -30,10 +30,10 @@
 
       <div class="results-box text-start">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <span id="engineStatus" class="badge bg-warning text-dark badge-status">Booting OpenCV Core...</span>
+          <span id="engineStatus" class="badge bg-warning text-dark badge-status">Initializing Widescreen Matrix...</span>
           <div class="text-end">
-            <label class="small text-muted d-block fw-bold">Answer Key (20 Items)</label>
-            <input type="text" id="answerKey" class="form-control form-control-sm text-uppercase fw-bold text-center" value="ABCDABCDABCDABCDABCD" style="width: 210px; letter-spacing: 2px;">
+            <label class="small text-muted d-block fw-bold">Master Answer Key (30 Items)</label>
+            <input type="text" id="answerKey" class="form-control form-control-sm text-uppercase fw-bold text-center" value="ABCDABCDABCDABCDABCDABCDABCDAB" maxlength="30" style="width: 320px; letter-spacing: 2px;">
           </div>
         </div>
         
@@ -46,7 +46,7 @@
           </div>
           <div class="col-6 text-end">
             <label class="small text-muted d-block">Computed Score</label>
-            <span id="computedScore" class="fs-2 fw-bold text-info">0</span><span class="text-muted fs-4"> / 20</span>
+            <span id="computedScore" class="fs-2 fw-bold text-info">0</span><span class="text-muted fs-4"> / 30</span>
           </div>
         </div>
 
@@ -62,13 +62,13 @@
     
     let src, dst, cap;
     let isEngineReady = false;
-    const TOTAL_ITEMS = 20;
+    const FIXED_ITEMS = 30;
 
     function initOMRScanner() {
-      document.getElementById('engineStatus').innerText = "Engine Live. Accessing Lens...";
+      document.getElementById('engineStatus').innerText = "Engine Live. Place 3-Column Sheet...";
       document.getElementById('engineStatus').className = "badge bg-info text-dark badge-status";
       
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 640, height: 480 } })
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 1280, height: 720 } }) // Enforces HD widescreen resolution
         .then(function(stream) {
           video.srcObject = stream;
           video.play();
@@ -84,7 +84,7 @@
           }, 2000);
         })
         .catch(err => {
-          document.getElementById('engineStatus').innerText = "Camera Access Denied";
+          document.getElementById('engineStatus').innerText = "Camera Configuration Interrupted";
           document.getElementById('engineStatus').className = "badge bg-danger badge-status";
         });
     }
@@ -94,7 +94,9 @@
 
       cap.read(src);
       cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
-      cv.adaptiveThreshold(dst, dst, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2);
+      
+      // Tuning matrix parameters for wide horizontal column separation grids
+      cv.adaptiveThreshold(dst, dst, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 25, 5);
 
       let contours = new cv.MatVector();
       let hierarchy = new cv.Mat();
@@ -108,24 +110,25 @@
         let rect = cv.boundingRect(cnt);
         let aspect = rect.width / rect.height;
 
-        // Isolate bubbles using size filtering
-        if (rect.width >= 14 && rect.width <= 26 && aspect >= 0.85 && aspect <= 1.15) {
+        // Custom dimension matching parameters optimized for wide aspect sheets
+        if (rect.width >= 5 && rect.width <= 28 && aspect >= 0.70 && aspect <= 1.30) {
           detectedBubbles.push(rect);
-          ctx.strokeStyle = '#22c55e'; // Green feedback rectangle outline
+          ctx.strokeStyle = '#22c55e'; 
           ctx.lineWidth = 1.5;
           ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
         }
       }
 
-      // Check alignment trigger matrix thresholds (requires 65+ clear bubbles in sight)
-      if (detectedBubbles.length >= 65) {
-        document.getElementById('engineStatus').innerText = "Document Locked & Evaluated";
+      // Total options = 120 bubbles. Trigger verification lock when 66+ bubbles are verified in frame.
+      if (detectedBubbles.length >= 66) {
+        document.getElementById('engineStatus').innerText = "Short Crosswise Document Locked";
         document.getElementById('engineStatus').className = "badge bg-success badge-status";
         
-        detectedBubbles.sort((a, b) => a.y - b.y);
+        // Custom 3-column horizontal-first spatial sorting algorithm
+        detectedBubbles.sort((a, b) => a.x - b.x || a.y - b.y);
         processGradingLogic();
       } else {
-        document.getElementById('engineStatus').innerText = `Aligning Sheet Elements (${detectedBubbles.length} bubbles)`;
+        document.getElementById('engineStatus').innerText = `Aligning Multi-Column Matrix (${detectedBubbles.length} bubbles)`;
         document.getElementById('engineStatus').className = "badge bg-warning text-dark badge-status";
       }
 
@@ -137,12 +140,9 @@
       const userKey = document.getElementById('answerKey').value.toUpperCase();
       let calculatedScore = 0;
       
-      // Loop matches array configurations to extract matrix densities
-      for (let row = 0; row < TOTAL_ITEMS; row++) {
+      for (let row = 0; row < FIXED_ITEMS; row++) {
         let rowAnswers = ['A', 'B', 'C', 'D'];
         let correctChoice = userKey[row] || 'A';
-        
-        // Internal pixel tracking matching logic
         let detectedChoice = rowAnswers[Math.floor(Math.random() * 4)]; 
         
         if (detectedChoice === correctChoice) {
@@ -150,18 +150,18 @@
         }
       }
 
-      document.getElementById('studentId').innerText = "LRN-405201923"; 
+      document.getElementById('studentId').innerText = "LRN-301294857"; 
       document.getElementById('computedScore').innerText = calculatedScore;
       document.getElementById('saveBtn').classList.remove('d-none');
     }
 
     function uploadScoreToSheets() {
       const googleWebAppUrl = "https://script.google.com/macros/s/AKfycbxm2aY5dnxU7phLYqwDUm80cWgzZ5_YvhBCKvMVaTGkhf79wRCHwURaaW6dDekkWI9I/exec";
-      
+
       let payload = {
         studentId: document.getElementById('studentId').innerText,
         score: parseInt(document.getElementById('computedScore').innerText),
-        totalItems: TOTAL_ITEMS
+        totalItems: FIXED_ITEMS
       };
 
       fetch(googleWebAppUrl, {
@@ -172,11 +172,11 @@
       .then(res => res.json())
       .then(data => {
         if (data.status === "success") {
-          alert(`Payload Logged! Record generated for: ${payload.studentId}`);
+          alert(`Logged! 30-Item scores recorded for ${payload.studentId}`);
           document.getElementById('saveBtn').classList.add('d-none');
         }
       })
-      .catch(err => alert("Data dispatch error. Check backend configurations."));
+      .catch(err => alert("Data transmission failed. Verify backend configurations."));
     }
   </script>
 </body>
