@@ -1,0 +1,20 @@
+// Conceptual JS inside your external Scanner webapp
+function sendDataToGoogleSheets(studentId, calculatedScore, totalItems) {
+  const googleWebAppUrl = "https://script.google.com/macros/s/AKfycbxm2aY5dnxU7phLYqwDUm80cWgzZ5_YvhBCKvMVaTGkhf79wRCHwURaaW6dDekkWI9I/exec";
+  
+  let payload = {
+    studentId: studentId,
+    score: calculatedScore,
+    totalItems: totalItems
+  };
+
+  fetch(googleWebAppUrl, {
+    method: "POST",
+    mode: "no-cors", // Required to pass data safely to Google servers
+    cache: "no-cache",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+  .then(() => alert("Score recorded successfully in Google Sheets!"))
+  .catch(err => console.error("Error sending data:", err));
+}
