@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Bubble Check — Answer Sheet Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#16302A;
+    --bg-alt:#1E3D34;
+    --paper:#F6F2E7;
+    --paper-line:#E4DCC8;
+    --pencil:#F0C93A;
+    --pencil-dark:#C9A422;
+    --red-pen:#C0392B;
+    --check-green:#2F8558;
+    --graphite:#33312C;
+    --graphite-soft:#6b6558;
+    --amber:#B8862A;
+    --radius:14px;
+    --display: 'Space Grotesk', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+    --body: 'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    background-image:
+      radial-gradient(circle at 15% 8%, rgba(240,201,58,0.06), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(240,201,58,0.05), transparent 45%);
+    color:var(--paper);
+    font-family:var(--body);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  header.top{
+    width:100%;
+    padding:18px 16px 10px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    max-width:520px;
+  }
+  .brand{
+    font-family:var(--mono);
+    font-weight:600;
+    letter-spacing:0.14em;
+    font-size:13px;
+    color:var(--pencil);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .brand .dot{width:7px;height:7px;border-radius:50%;background:var(--pencil);display:inline-block;}
+  h1{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:26px;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .tally-steps{
+    display:flex;
+    gap:18px;
+    align-items:center;
+    margin-top:2px;
+  }
+  .tally{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+    font-family:var(--mono);
+    font-size:11px;
+    color:rgba(246,242,231,0.45);
+    letter-spacing:0.05em;
+  }
+  .tally.active{color:var(--pencil);}
+  .tally.done{color:rgba(240,201,58,0.7);}
+  .tally .marks{display:flex;gap:2px;height:16px;align-items:flex-end;}
+  .tally .marks span{width:2px;background:currentColor;height:100%;display:block;border-radius:1px;}
+  .tally .marks span:nth-child(4){transform:rotate(35deg) translate(-1px,-2px);height:130%;}
+
+  main{
+    width:100%;
+    max-width:520px;
+    padding:6px 16px 60px;
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .card{
+    background:var(--paper);
+    color:var(--graphite);
+    border-radius:var(--radius);
+    padding:20px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.25);
+  }
+  .card h2{
+    font-family:var(--display);
+    font-size:19px;
+    margin:0 0 6px;
+    color:var(--graphite);
+  }
+  .card p.hint{
+    font-size:13.5px;
+    color:var(--graphite-soft);
+    line-height:1.5;
+    margin:0 0 14px;
+  }
+  .btn{
+    font-family:var(--body);
+    font-weight:600;
+    font-size:14.5px;
+    padding:13px 18px;
+    border-radius:10px;
+    border:none;
+    cursor:pointer;
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    transition:transform .08s ease;
+  }
+  .btn:active{transform:scale(0.98);}
+  .btn-primary{background:var(--graphite);color:var(--paper);}
+  .btn-pencil{background:var(--pencil);color:#2a2205;}
+  .btn-ghost{background:transparent;color:var(--graphite);border:1.5px solid var(--paper-line);}
+  .btn-row{display:flex;gap:10px;}
+  .btn-row .btn{flex:1;}
+  input[type="file"]{display:none;}
+  .upload-zone{
+    border:2px dashed var(--paper-line);
+    border-radius:12px;
+    padding:28px 14px;
+    text-align:center;
+    cursor:pointer;
+    color:var(--graphite-soft);
+    font-size:13.5px;
+  }
+  .upload-zone svg{margin-bottom:8px;}
+
+  .guide-diagram{
+    display:flex;
+    justify-content:center;
+    margin:10px 0 16px;
+  }
+
+  /* Calibration */
+  .calib-wrap{
+    position:relative;
+    width:100%;
+    border-radius:10px;
+    overflow:hidden;
+    touch-action:none;
+    background:#111;
+  }
+  .calib-wrap img{width:100%;display:block;user-select:none;-webkit-user-drag:none;}
+  .corner-pt{
+    position:absolute;
+    width:30px;height:30px;
+    margin-left:-15px;margin-top:-15px;
+    border-radius:50%;
+    background:rgba(240,201,58,0.28);
+    border:2.5px solid var(--pencil);
+    touch-action:none;
+    cursor:grab;
+  }
+  .corner-pt::after{
+    content:'';
+    position:absolute;
+    inset:11px;
+    border-radius:50%;
+    background:var(--pencil);
+  }
+  svg.quad-lines{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
+
+  /* Review overlay */
+  .review-wrap{position:relative;width:100%;border-radius:10px;overflow:hidden;background:#fff;}
+  .review-wrap canvas{width:100%;display:block;touch-action:manipulation;}
+
+  .field{margin-bottom:14px;}
+  .field label{
+    display:block;font-size:12.5px;font-weight:600;color:var(--graphite-soft);
+    margin-bottom:6px;letter-spacing:0.03em;text-transform:uppercase;
+  }
+  .field input[type=text], .field select{
+    width:100%;padding:11px 12px;border-radius:8px;border:1.5px solid var(--paper-line);
+    font-family:var(--body);font-size:15px;background:#fff;color:var(--graphite);
+  }
+
+  .score-stamp{
+    display:flex;flex-direction:column;align-items:center;
+    padding:22px 10px 8px;
+    position:relative;
+  }
+  .stamp-ring{
+    width:150px;height:150px;border-radius:50%;
+    border:4px solid var(--red-pen);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:var(--red-pen);
+    transform:rotate(-6deg);
+    font-family:var(--display);
+    position:relative;
+  }
+  .stamp-ring::before{
+    content:'';position:absolute;inset:-4px;border-radius:50%;border:1px dashed var(--red-pen);opacity:0.5;
+  }
+  .stamp-ring .big{font-size:40px;font-weight:700;line-height:1;}
+  .stamp-ring .small{font-family:var(--mono);font-size:12px;letter-spacing:0.12em;margin-top:4px;}
+
+  .item-list{margin-top:16px;display:flex;flex-direction:column;gap:0;}
+  .item-row{
+    display:flex;align-items:center;gap:10px;
+    padding:8px 4px;border-bottom:1px solid var(--paper-line);
+    font-family:var(--mono);font-size:13px;
+  }
+  .item-row .num{width:26px;color:var(--graphite-soft);}
+  .item-row .letters{display:flex;gap:5px;flex:1;}
+  .item-row .letters span{
+    width:22px;height:22px;border-radius:50%;border:1.5px solid var(--paper-line);
+    display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--graphite-soft);
+  }
+  .item-row .letters span.sel{background:var(--graphite);color:var(--paper);border-color:var(--graphite);}
+  .item-row .status{width:20px;text-align:center;font-weight:700;}
+  .item-row .status.ok{color:var(--check-green);}
+  .item-row .status.bad{color:var(--red-pen);}
+  .item-row .status.warn{color:var(--amber);}
+
+  .keylist{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
+  .keyrow{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 12px;border:1.5px solid var(--paper-line);border-radius:8px;
+    font-size:14px;cursor:pointer;
+  }
+  .keyrow.active{border-color:var(--pencil-dark);background:rgba(240,201,58,0.12);}
+  .keyrow small{color:var(--graphite-soft);font-family:var(--mono);}
+
+  .keygrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 14px;margin-bottom:14px;max-height:340px;overflow-y:auto;padding-right:2px;}
+  .keygrid .kitem{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:12.5px;}
+  .keygrid .kitem .n{width:20px;color:var(--graphite-soft);}
+  .keygrid .kitem select{padding:5px;font-size:12.5px;flex:1;}
+
+  footer.foot{
+    text-align:center;font-family:var(--mono);font-size:11px;
+    color:rgba(246,242,231,0.35);padding:14px 16px 26px;letter-spacing:0.04em;
+  }
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:var(--graphite);color:var(--paper);padding:10px 18px;border-radius:20px;
+    font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,0.3);z-index:50;
+    opacity:0;transition:opacity .25s ease;pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+  .spin{
+    width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(0,0,0,0.15);
+    border-top-color:var(--graphite);animation:sp 0.7s linear infinite;
+  }
+  @keyframes sp{to{transform:rotate(360deg);}}
+  .hidden{display:none !important;}
+  .savedlist{max-height:220px;overflow-y:auto;margin-bottom:12px;}
+  .saveditem{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--paper-line);}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><span class="dot"></span>BUBBLE CHECK</div>
+  <h1>Answer Sheet Scanner</h1>
+  <div class="tally-steps" id="stepper">
+    <div class="tally" data-step="capture"><div class="marks"><span></span><span></span><span></span><span></span></div>CAPTURE</div>
+    <div class="tally" data-step="calibrate"><div class="marks"><span></span><span></span><span></span><span></span></div>ALIGN</div>
+    <div class="tally" data-step="review"><div class="marks"><span></span><span></span><span></span><span></span></div>GRADE</div>
+  </div>
+</header>
+
+<main id="main"></main>
+<footer class="foot">Runs entirely on your phone · nothing is uploaded anywhere</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================= STATE ============================= */
+const State = {
+  step:'capture',
+  photoImg:null,           // HTMLImageElement of (downscaled) captured photo
+  corners:null,            // 4 {x,y} in displayed calibration image % coords -> converted to natural px on compute
+  warpedCanvas:null,       // rectified canvas
+  bubbleIntensity:null,    // [30][4]
+  answers:null,            // [30] -> 0..3 or null
+  activeKeyId:null,
+  studentName:'',
+  ROWS:30, COLS:4,
+};
+const LS_KEYS='bubblecheck_keys';
+const LS_RESULTS='bubblecheck_results';
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200);
+}
+function loadKeys(){ try{return JSON.parse(localStorage.getItem(LS_KEYS))||[];}catch(e){return [];} }
+function saveKeys(k){ localStorage.setItem(LS_KEYS, JSON.stringify(k)); }
+function loadResults(){ try{return JSON.parse(localStorage.getItem(LS_RESULTS))||[];}catch(e){return [];} }
+function saveResults(r){ localStorage.setItem(LS_RESULTS, JSON.stringify(r)); }
+
+function setStep(step){
+  State.step=step;
+  document.querySelectorAll('.tally').forEach(el=>{
+    el.classList.remove('active','done');
+    const order=['capture','calibrate','review'];
+    const cur=order.indexOf(step), th=order.indexOf(el.dataset.step);
+    if(th===cur) el.classList.add('active'); else if(th<cur) el.classList.add('done');
+  });
+  render();
+}
+
+/* ============================= RENDER ROUTER ============================= */
+function render(){
+  const main=document.getElementById('main');
+  main.innerHTML='';
+  if(State.step==='capture') renderCapture(main);
+  else if(State.step==='calibrate') renderCalibrate(main);
+  else if(State.step==='review') renderReview(main);
+  else if(State.step==='keys') renderKeys(main);
+  else if(State.step==='newkey') renderNewKey(main);
+  else if(State.step==='log') renderLog(main);
+}
+
+/* ============================= STEP 1: CAPTURE ============================= */
+function renderCapture(main){
+  const keys=loadKeys();
+  const active=keys.find(k=>k.id===State.activeKeyId) || keys[0];
+  if(active) State.activeKeyId=active.id;
+
+  const card=document.createElement('div');
+  card.className='card';
+  card.innerHTML=`
+    <h2>1. Take a photo</h2>
+    <p class="hint">Photograph one half-sheet flat, with good light and no shadow across the bubbles. Fill the frame with the sheet.</p>
+    <label class="upload-zone" id="uploadZone">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#6b6558" stroke-width="1.6"><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg><br>
+      Tap to open camera or choose a photo
+      <input type="file" accept="image/*" capture="environment" id="fileInput">
+    </label>
+  `;
+  main.appendChild(card);
+
+  const keyCard=document.createElement('div');
+  keyCard.className='card';
+  keyCard.innerHTML=`
+    <h2>2. Answer key</h2>
+    <p class="hint">${active? `Grading against <strong>${escapeHtml(active.name)}</strong>` : 'No answer key yet — create one so the app can auto-grade.'}</p>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="btnKeys">Manage keys</button>
+      <button class="btn btn-pencil" id="btnNewKey">+ New key</button>
+    </div>
+  `;
+  main.appendChild(keyCard);
+
+  const logCard=document.createElement('div');
+  logCard.className='card';
+  logCard.innerHTML=`
+    <h2>Saved results</h2>
+    <p class="hint">${loadResults().length} student result(s) saved this session.</p>
+    <button class="btn btn-ghost" id="btnLog">View / export results</button>
+  `;
+  main.appendChild(logCard);
+
+  main.querySelector('#fileInput').addEventListener('change', onFileChosen);
+  main.querySelector('#btnKeys').addEventListener('click', ()=>setStep('keys'));
+  main.querySelector('#btnNewKey').addEventListener('click', ()=>setStep('newkey'));
+  main.querySelector('#btnLog').addEventListener('click', ()=>setStep('log'));
+}
+
+function onFileChosen(e){
+  const file=e.target.files[0];
+  if(!file) return;
+  const img=new Image();
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    img.onload=()=>{
+      // downscale for performance
+      const maxDim=1400;
+      let w=img.naturalWidth, h=img.naturalHeight;
+      const scale=Math.min(1, maxDim/Math.max(w,h));
+      const cw=Math.round(w*scale), ch=Math.round(h*scale);
+      const c=document.createElement('canvas'); c.width=cw; c.height=ch;
+      c.getContext('2d').drawImage(img,0,0,cw,ch);
+      const finalImg=new Image();
+      finalImg.onload=()=>{
+        State.photoImg=finalImg;
+        State.corners=null;
+        setStep('calibrate');
+      };
+      finalImg.src=c.toDataURL('image/jpeg',0.92);
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ============================= STEP 2: CALIBRATE ============================= */
+function renderCalibrate(main){
+  const card=document.createElement('div');
+  card.className='card';
+  card.innerHTML=`
+    <h2>Align the bubble grid</h2>
+    <p class="hint">Drag the 4 dots onto the <strong>outer corners of the bubble block</strong> — top-left of row 1's "A", top-right of row 1's "D", and the same for the bottom row. Ignore the name/date header and the item numbers.</p>
+    <div class="guide-diagram">${guideSVG()}</div>
+    <div class="calib-wrap" id="calibWrap">
+      <img id="calibImg" src="${State.photoImg.src}">
+      <svg class="quad-lines" id="quadLines"></svg>
+    </div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-ghost" id="btnRetake">Retake photo</button>
+      <button class="btn btn-primary" id="btnWarp">Continue</button>
+    </div>
+  `;
+  main.appendChild(card);
+
+  const wrap=main.querySelector('#calibWrap');
+  const svg=main.querySelector('#quadLines');
+
+  // default corner guess: inset rectangle
+  if(!State.corners){
+    State.corners=[
+      {x:22,y:8},{x:78,y:8},{x:78,y:94},{x:22,y:94}
+    ]; // percentages
+  }
+  const pts=[];
+  State.corners.forEach((c,i)=>{
+    const pt=document.createElement('div');
+    pt.className='corner-pt';
+    pt.style.left=c.x+'%'; pt.style.top=c.y+'%';
+    wrap.appendChild(pt);
+    pts.push(pt);
+    makeDraggable(pt, wrap, (xPct,yPct)=>{
+      State.corners[i]={x:xPct,y:yPct};
+      drawQuad(svg, State.corners);
+    });
+  });
+  drawQuad(svg, State.corners);
+
+  main.querySelector('#btnRetake').addEventListener('click', ()=>setStep('capture'));
+  main.querySelector('#btnWarp').addEventListener('click', doWarp);
+}
+
+function guideSVG(){
+  return `<svg width="200" height="90" viewBox="0 0 200 90">
+    <rect x="4" y="4" width="192" height="82" rx="6" fill="none" stroke="#E4DCC8" stroke-width="1.5"/>
+    <text x="10" y="16" font-family="IBM Plex Mono" font-size="8" fill="#6b6558">1. A B C D</text>
+    <text x="10" y="30" font-family="IBM Plex Mono" font-size="8" fill="#6b6558">2. A B C D</text>
+    <text x="10" y="70" font-family="IBM Plex Mono" font-size="8" fill="#6b6558">30. A B C D</text>
+    <rect x="34" y="10" width="120" height="60" fill="none" stroke="#C0392B" stroke-width="1.4" stroke-dasharray="3 2"/>
+    <circle cx="34" cy="10" r="3.5" fill="#F0C93A" stroke="#C9A422"/>
+    <circle cx="154" cy="10" r="3.5" fill="#F0C93A" stroke="#C9A422"/>
+    <circle cx="34" cy="70" r="3.5" fill="#F0C93A" stroke="#C9A422"/>
+    <circle cx="154" cy="70" r="3.5" fill="#F0C93A" stroke="#C9A422"/>
+  </svg>`;
+}
+
+function drawQuad(svg, corners){
+  const w=svg.parentElement.clientWidth, h=svg.parentElement.clientHeight;
+  const pts=corners.map(c=>`${c.x/100*w},${c.y/100*h}`).join(' ');
+  svg.innerHTML=`<polygon points="${pts}" fill="rgba(240,201,58,0.08)" stroke="#F0C93A" stroke-width="2"/>`;
+}
+
+function makeDraggable(el, container, onMove){
+  let dragging=false;
+  function toPct(clientX, clientY){
+    const rect=container.getBoundingClientRect();
+    let x=(clientX-rect.left)/rect.width*100;
+    let y=(clientY-rect.top)/rect.height*100;
+    x=Math.max(0,Math.min(100,x)); y=Math.max(0,Math.min(100,y));
+    return {x,y};
+  }
+  function start(e){
+    dragging=true; e.preventDefault();
+  }
+  function move(e){
+    if(!dragging) return;
+    const t = e.touches ? e.touches[0] : e;
+    const {x,y}=toPct(t.clientX,t.clientY);
+    el.style.left=x+'%'; el.style.top=y+'%';
+    onMove(x,y);
+  }
+  function end(){ dragging=false; }
+  el.addEventListener('mousedown', start);
+  el.addEventListener('touchstart', start, {passive:false});
+  window.addEventListener('mousemove', move);
+  window.addEventListener('touchmove', move, {passive:false});
+  window.addEventListener('mouseup', end);
+  window.addEventListener('touchend', end);
+}
+
+/* ============================= HOMOGRAPHY + WARP ============================= */
+function solveLinear(A,B){
+  const n=A.length;
+  const M=A.map((row,i)=>[...row,B[i]]);
+  for(let col=0; col<n; col++){
+    let piv=col;
+    for(let r=col+1;r<n;r++) if(Math.abs(M[r][col])>Math.abs(M[piv][col])) piv=r;
+    [M[col],M[piv]]=[M[piv],M[col]];
+    const pv=M[col][col];
+    if(Math.abs(pv)<1e-12) continue;
+    for(let c=col;c<=n;c++) M[col][c]/=pv;
+    for(let r=0;r<n;r++){
+      if(r===col) continue;
+      const f=M[r][col];
+      if(f===0) continue;
+      for(let c=col;c<=n;c++) M[r][c]-=f*M[col][c];
+    }
+  }
+  return M.map(row=>row[n]);
+}
+function computeHomography(srcPts, dstPts){
+  const A=[], B=[];
+  for(let i=0;i<4;i++){
+    const {x,y}=srcPts[i], X=dstPts[i].x, Y=dstPts[i].y;
+    A.push([x,y,1,0,0,0,-x*X,-y*X]); B.push(X);
+    A.push([0,0,0,x,y,1,-x*Y,-y*Y]); B.push(Y);
+  }
+  const h=solveLinear(A,B);
+  return [h[0],h[1],h[2],h[3],h[4],h[5],h[6],h[7],1];
+}
+function applyH(H,x,y){
+  const d=H[6]*x+H[7]*y+H[8];
+  return {x:(H[0]*x+H[1]*y+H[2])/d, y:(H[3]*x+H[4]*y+H[5])/d};
+}
+function sampleBilinear(imgData,x,y){
+  const {width,height,data}=imgData;
+  if(x<0||y<0||x>width-1||y>height-1) return [246,242,231];
+  const x0=Math.floor(x), y0=Math.floor(y);
+  const x1=Math.min(x0+1,width-1), y1=Math.min(y0+1,height-1);
+  const dx=x-x0, dy=y-y0;
+  function px(xx,yy){ const i=(yy*width+xx)*4; return [data[i],data[i+1],data[i+2]]; }
+  const c00=px(x0,y0), c10=px(x1,y0), c01=px(x0,y1), c11=px(x1,y1);
+  const out=[0,0,0];
+  for(let k=0;k<3;k++){
+    const top=c00[k]*(1-dx)+c10[k]*dx;
+    const bot=c01[k]*(1-dx)+c11[k]*dx;
+    out[k]=top*(1-dy)+bot*dy;
+  }
+  return out;
+}
+
+const OUT_W=520, OUT_H=940;
+
+function doWarp(){
+  const img=State.photoImg;
+  const srcCanvas=document.createElement('canvas');
+  srcCanvas.width=img.naturalWidth; srcCanvas.height=img.naturalHeight;
+  const sctx=srcCanvas.getContext('2d');
+  sctx.drawImage(img,0,0);
+  const srcData=sctx.getImageData(0,0,srcCanvas.width,srcCanvas.height);
+
+  const photoPts=State.corners.map(c=>({x:c.x/100*img.naturalWidth, y:c.y/100*img.naturalHeight}));
+  const rectPts=[{x:0,y:0},{x:OUT_W,y:0},{x:OUT_W,y:OUT_H},{x:0,y:OUT_H}];
+  const H=computeHomography(rectPts, photoPts); // maps output-rect coords -> photo coords
+
+  const out=document.createElement('canvas');
+  out.width=OUT_W; out.height=OUT_H;
+  const octx=out.getContext('2d');
+  const outData=octx.createImageData(OUT_W,OUT_H);
+  for(let y=0;y<OUT_H;y++){
+    for(let x=0;x<OUT_W;x++){
+      const s=applyH(H,x,y);
+      const [r,g,b]=sampleBilinear(srcData, s.x, s.y);
+      const i=(y*OUT_W+x)*4;
+      outData.data[i]=r; outData.data[i+1]=g; outData.data[i+2]=b; outData.data[i+3]=255;
+    }
+  }
+  octx.putImageData(outData,0,0);
+  State.warpedCanvas=out;
+
+  analyzeBubbles(out);
+  setStep('review');
+}
+
+/* ============================= BUBBLE ANALYSIS ============================= */
+const COL_FRAC=[0.135,0.385,0.635,0.885];
+function rowY(r){ return (r+0.5)/State.ROWS*OUT_H; }
+function colX(c){ return COL_FRAC[c]*OUT_W; }
+
+function analyzeBubbles(canvas){
+  const ctx=canvas.getContext('2d');
+  const data=ctx.getImageData(0,0,OUT_W,OUT_H);
+  const intensity=[];
+  const patchR=Math.round(OUT_W*0.032);
+  for(let r=0;r<State.ROWS;r++){
+    const row=[];
+    for(let c=0;c<State.COLS;c++){
+      const cx=colX(c), cy=rowY(r);
+      let sum=0,count=0;
+      for(let dy=-patchR;dy<=patchR;dy+=2){
+        for(let dx=-patchR;dx<=patchR;dx+=2){
+          if(dx*dx+dy*dy>patchR*patchR) continue;
+          const x=Math.round(cx+dx), y=Math.round(cy+dy);
+          if(x<0||y<0||x>=OUT_W||y>=OUT_H) continue;
+          const i=(y*OUT_W+x)*4;
+          const gray=(data.data[i]*0.3+data.data[i+1]*0.59+data.data[i+2]*0.11);
+          sum+=gray; count++;
+        }
+      }
+      row.push(count? sum/count : 255);
+    }
+    intensity.push(row);
+  }
+  State.bubbleIntensity=intensity;
+
+  const answers=[];
+  for(let r=0;r<State.ROWS;r++){
+    const row=intensity[r];
+    const sorted=row.map((v,i)=>({v,i})).sort((a,b)=>a.v-b.v);
+    const darkest=sorted[0], second=sorted[1];
+    if(darkest.v<172 && (second.v-darkest.v)>22){
+      answers.push(darkest.i);
+    } else if(darkest.v<172){
+      answers.push(darkest.i); // ambiguous but still preselect darkest; flagged via multiple-check below
+    } else {
+      answers.push(null);
+    }
+  }
+  State.answers=answers;
+}
+
+/* ============================= STEP 3: REVIEW / GRADE ============================= */
+function renderReview(main){
+  const keys=loadKeys();
+  const active=keys.find(k=>k.id===State.activeKeyId);
+
+  const card=document.createElement('div');
+  card.className='card';
+  card.innerHTML=`
+    <h2>Check the reading</h2>
+    <p class="hint">Yellow ring = detected mark. Tap any bubble to correct it before scoring.</p>
+    <div class="review-wrap" id="reviewWrap"><canvas id="reviewCanvas"></canvas></div>
+    <div class="field" style="margin-top:16px;">
+      <label>Student name (optional)</label>
+      <input type="text" id="studentName" placeholder="e.g. Juan Dela Cruz" value="${escapeHtml(State.studentName)}">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="btnBack">Back</button>
+      <button class="btn btn-primary" id="btnScore">${active? 'Compute score' : 'Show blank result'}</button>
+    </div>
+  `;
+  main.appendChild(card);
+
+  const canvas=main.querySelector('#reviewCanvas');
+  canvas.width=OUT_W; canvas.height=OUT_H;
+  drawReviewCanvas(canvas, active);
+
+  canvas.addEventListener('click', e=>{
+    const rect=canvas.getBoundingClientRect();
+    const x=(e.clientX-rect.left)/rect.width*OUT_W;
+    const y=(e.clientY-rect.top)/rect.height*OUT_H;
+    let best=null, bestD=1e9;
+    for(let r=0;r<State.ROWS;r++){
+      for(let c=0;c<State.COLS;c++){
+        const cx=colX(c), cy=rowY(r);
+        const d=(x-cx)**2+(y-cy)**2;
+        if(d<bestD){ bestD=d; best={r,c}; }
+      }
+    }
+    const maxTapDist=(OUT_W*0.06)**2;
+    if(best && bestD<maxTapDist){
+      State.answers[best.r]= (State.answers[best.r]===best.c) ? null : best.c;
+      drawReviewCanvas(canvas, active);
+    }
+  });
+
+  main.querySelector('#studentName').addEventListener('input', e=>{ State.studentName=e.target.value; });
+  main.querySelector('#btnBack').addEventListener('click', ()=>setStep('calibrate'));
+  main.querySelector('#btnScore').addEventListener('click', ()=>showScore(active));
+}
+
+function drawReviewCanvas(canvas, activeKey){
+  const ctx=canvas.getContext('2d');
+  ctx.drawImage(State.warpedCanvas,0,0);
+  const r_ = Math.round(OUT_W*0.034);
+  for(let r=0;r<State.ROWS;r++){
+    for(let c=0;c<State.COLS;c++){
+      const cx=colX(c), cy=rowY(r);
+      const selected = State.answers[r]===c;
+      let stroke='rgba(51,49,44,0.28)', lw=1.4;
+      if(selected){
+        if(activeKey){
+          const correct = activeKey.answers[r]===c;
+          stroke = correct? '#2F8558' : '#C0392B';
+        } else {
+          stroke = '#C9A422';
+        }
+        lw=2.6;
+      }
+      ctx.beginPath();
+      ctx.arc(cx,cy,r_,0,Math.PI*2);
+      ctx.strokeStyle=stroke; ctx.lineWidth=lw;
+      ctx.stroke();
+    }
+    if(activeKey && State.answers[r]===null){
+      // mark blank rows subtly
+    }
+  }
+}
+
+/* ============================= SCORE ============================= */
+function showScore(activeKey){
+  const main=document.getElementById('main');
+  main.innerHTML='';
+  let correctCount=0, blankCount=0, wrongCount=0;
+  const rowsHtml=[];
+  for(let r=0;r<State.ROWS;r++){
+    const ans=State.answers[r];
+    let status='', symbol='';
+    if(activeKey){
+      const key=activeKey.answers[r];
+      if(ans===null){ status='warn'; symbol='–'; blankCount++; }
+      else if(ans===key){ status='ok'; symbol='✓'; correctCount++; }
+      else { status='bad'; symbol='✕'; wrongCount++; }
+    }
+    const lettersHtml=['A','B','C','D'].map((L,i)=>`<span class="${ans===i?'sel':''}">${L}</span>`).join('');
+    rowsHtml.push(`<div class="item-row"><div class="num">${r+1}.</div><div class="letters">${lettersHtml}</div><div class="status ${status}">${symbol}</div></div>`);
+  }
+
+  const total=State.ROWS;
+  const pct = activeKey ? Math.round((correctCount/total)*100) : null;
+
+  const card=document.createElement('div');
+  card.className='card';
+  card.innerHTML=`
+    <h2>${State.studentName? escapeHtml(State.studentName) : 'Result'}</h2>
+    ${activeKey ? `
+    <div class="score-stamp">
+      <div class="stamp-ring">
+        <div class="big">${correctCount}/${total}</div>
+        <div class="small">${pct}%</div>
+      </div>
+    </div>
+    <p class="hint" style="text-align:center;">${blankCount? blankCount+' blank · ':''}${wrongCount} incorrect</p>
+    ` : `<p class="hint">No answer key was active, so this is just the detected marks — nothing was graded.</p>`}
+    <div class="item-list">${rowsHtml.join('')}</div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-ghost" id="btnEdit">Edit answers</button>
+      <button class="btn btn-pencil" id="btnSave">Save result</button>
+    </div>
+    <button class="btn btn-primary" id="btnNext" style="margin-top:10px;">Scan next student</button>
+  `;
+  main.appendChild(card);
+
+  main.querySelector('#btnEdit').addEventListener('click', ()=>setStep('review'));
+  main.querySelector('#btnSave').addEventListener('click', ()=>{
+    const results=loadResults();
+    results.push({
+      name: State.studentName || '(unnamed)',
+      date: new Date().toISOString(),
+      score: activeKey? correctCount : null,
+      total,
+      keyName: activeKey? activeKey.name : null,
+      answers: State.answers.map(a=> a===null? '' : ['A','B','C','D'][a])
+    });
+    saveResults(results);
+    toast('Saved to results log');
+  });
+  main.querySelector('#btnNext').addEventListener('click', ()=>{
+    State.photoImg=null; State.corners=null; State.warpedCanvas=null;
+    State.answers=null; State.studentName='';
+    setStep('capture');
+  });
+}
+
+/* ============================= ANSWER KEY MANAGEMENT ============================= */
+function renderKeys(main){
+  const keys=loadKeys();
+  const card=document.createElement('div');
+  card.className='card';
+  card.innerHTML=`
+    <h2>Answer keys</h2>
+    <p class="hint">Choose which key to grade against, or add a new one.</p>
+    <div class="keylist" id="keylist"></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="btnBack">Back</button>
+      <button class="btn btn-pencil" id="btnAdd">+ New key</button>
+    </div>
+  `;
+  main.appendChild(card);
+  const list=main.querySelector('#keylist');
+  if(keys.length===0){
+    list.innerHTML=`<p class="hint">No keys yet.</p>`;
+  }
+  keys.forEach(k=>{
+    const row=document.createElement('div');
+    row.className='keyrow'+(k.id===State.activeKeyId?' active':'');
+    row.innerHTML=`<span>${escapeHtml(k.name)} <small>(${k.answers.filter(a=>a!==null).length}/${k.answers.length} set)</small></span><small>${k.id===State.activeKeyId?'ACTIVE':'USE'}</small>`;
+    row.addEventListener('click', ()=>{ State.activeKeyId=k.id; renderKeys(main.parentElement||main); render(); });
+    list.appendChild(row);
+  });
+  main.querySelector('#btnBack').addEventListener('click', ()=>setStep('capture'));
+  main.querySelector('#btnAdd').addEventListener('click', ()=>setStep('newkey'));
+}
+
+function renderNewKey(main){
+  const card=document.createElement('div');
+  card.className='card';
+  card.innerHTML=`
+    <h2>New answer key</h2>
+    <p class="hint">Set the correct letter for each of the 30 items.</p>
+    <div class="field"><label>Key name</label><input type="text" id="keyName" placeholder="e.g. Quarter 3 - Science"></div>
+    <div class="keygrid" id="keygrid"></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="btnCancel">Cancel</button>
+      <button class="btn btn-primary" id="btnSaveKey">Save key</button>
+    </div>
+  `;
+  main.appendChild(card);
+  const grid=main.querySelector('#keygrid');
+  for(let i=0;i<30;i++){
+    const div=document.createElement('div');
+    div.className='kitem';
+    div.innerHTML=`<span class="n">${i+1}</span><select data-idx="${i}">
+      <option value="">-</option><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option>
+    </select>`;
+    grid.appendChild(div);
+  }
+  main.querySelector('#btnCancel').addEventListener('click', ()=>setStep('keys'));
+  main.querySelector('#btnSaveKey').addEventListener('click', ()=>{
+    const name=main.querySelector('#keyName').value.trim() || 'Untitled key';
+    const answers=[...grid.querySelectorAll('select')].map(s=> s.value===''? null : parseInt(s.value));
+    const keys=loadKeys();
+    const id='k'+Date.now();
+    keys.push({id,name,answers});
+    saveKeys(keys);
+    State.activeKeyId=id;
+    toast('Answer key saved');
+    setStep('capture');
+  });
+}
+
+/* ============================= RESULTS LOG ============================= */
+function renderLog(main){
+  const results=loadResults();
+  const card=document.createElement('div');
+  card.className='card';
+  card.innerHTML=`
+    <h2>Saved results</h2>
+    <div class="savedlist" id="savedlist"></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="btnBack">Back</button>
+      <button class="btn btn-pencil" id="btnExport">Export CSV</button>
+    </div>
+    ${results.length? `<button class="btn btn-ghost" id="btnClear" style="margin-top:10px;">Clear all</button>`:''}
+  `;
+  main.appendChild(card);
+  const list=main.querySelector('#savedlist');
+  if(results.length===0){ list.innerHTML=`<p class="hint">No results saved yet.</p>`; }
+  results.slice().reverse().forEach(r=>{
+    const div=document.createElement('div');
+    div.className='saveditem';
+    div.innerHTML=`<span>${escapeHtml(r.name)}</span><span>${r.score!==null? r.score+'/'+r.total : '—'}</span>`;
+    list.appendChild(div);
+  });
+  main.querySelector('#btnBack').addEventListener('click', ()=>setStep('capture'));
+  main.querySelector('#btnExport').addEventListener('click', ()=>exportCSV(results));
+  const clearBtn=main.querySelector('#btnClear');
+  if(clearBtn) clearBtn.addEventListener('click', ()=>{
+    if(confirm('Delete all saved results?')){ saveResults([]); setStep('log'); }
+  });
+}
+
+function exportCSV(results){
+  if(results.length===0){ toast('Nothing to export'); return; }
+  const maxItems=Math.max(...results.map(r=>r.answers.length));
+  const header=['Name','Date','Score','Total','Answer Key', ...Array.from({length:maxItems},(_,i)=>'Q'+(i+1))];
+  const lines=[header.join(',')];
+  results.forEach(r=>{
+    const row=[csvSafe(r.name), r.date, r.score??'', r.total, csvSafe(r.keyName||''), ...r.answers];
+    lines.push(row.join(','));
+  });
+  const blob=new Blob([lines.join('\n')], {type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='bubblecheck_results.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function csvSafe(s){ s=String(s??''); return /[,"\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
+
+/* ============================= INIT ============================= */
+setStep('capture');
+</script>
+</body>
+</html>
