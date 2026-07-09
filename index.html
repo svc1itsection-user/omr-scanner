@@ -1,20 +1,88 @@
-// Conceptual JS inside your external Scanner webapp
-function sendDataToGoogleSheets(studentId, calculatedScore, totalItems) {
-  const googleWebAppUrl = "https://script.google.com/macros/s/AKfycbxm2aY5dnxU7phLYqwDUm80cWgzZ5_YvhBCKvMVaTGkhf79wRCHwURaaW6dDekkWI9I/exec";
-  
-  let payload = {
-    studentId: studentId,
-    score: calculatedScore,
-    totalItems: totalItems
-  };
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DepEd OMR Scanner Module</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    body { background-color: #212529; color: white; padding: 20px; text-align: center; }
+    #videoView { width: 100%; max-width: 500px; border: 4px solid #0d6efd; border-radius: 8px; background: #000; }
+    .control-box { max-width: 500px; margin: 20px auto; background: #343a40; padding: 20px; border-radius: 10px; }
+  </style>
+</head>
+<body>
 
-  fetch(googleWebAppUrl, {
-    method: "POST",
-    mode: "no-cors", // Required to pass data safely to Google servers
-    cache: "no-cache",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  })
-  .then(() => alert("Score recorded successfully in Google Sheets!"))
-  .catch(err => console.error("Error sending data:", err));
-}
+  <div class="container">
+    <h2 class="mt-3 text-warning fw-bold">OMR Grading Scanner Terminal</h2>
+    <p class="text-muted">Align sheet bubbles inside camera preview viewport</p>
+
+    <video id="videoView" autoplay playsinline></video>
+    
+    <div class="control-box shadow">
+      <div class="mb-3 text-start">
+        <label class="form-label text-white-50">Simulated Student LRN / Name</label>
+        <input type="text" id="studentId" class="form-control" value="LRN-102938475">
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col">
+          <label class="form-label text-white-50">Score</label>
+          <input type="number" id="testScore" class="form-control" value="18">
+        </div>
+        <div class="col">
+          <label class="form-label text-white-50">Total Items</label>
+          <input type="number" id="totalItems" class="form-control" value="20">
+        </div>
+      </div>
+      <button onclick="captureAndSubmit()" class="btn btn-primary w-100 fw-bold py-2">SUBMIT SCANNED SCORE</button>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Browser Webcam Access
+    const video = document.getElementById('videoView');
+    
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(function(stream) {
+          video.srcObject = stream;
+        })
+        .catch(function(error) {
+          console.error("Webcam Error: ", error);
+          alert("Camera initialization failed. Verify browser device privacy parameters.");
+        });
+    }
+
+    // Ship Payload Data to Google Sheets Apps Script API
+    function captureAndSubmit() {
+      // Your exact active deployment endpoint
+      const googleWebAppUrl = "https://script.google.com/macros/s/AKfycbxm2aY5dnxU7phLYqwDUm80cWgzZ5_YvhBCKvMVaTGkhf79wRCHwURaaW6dDekkWI9I/exec";
+      
+      let payload = {
+        studentId: document.getElementById('studentId').value,
+        score: parseInt(document.getElementById('testScore').value),
+        totalItems: parseInt(document.getElementById('totalItems').value)
+      };
+
+      // Send via standard text/plain configuration to seamlessly pass CORS hurdles
+      fetch(googleWebAppUrl, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success") {
+          alert(`Success! Data written for Student: ${payload.studentId}`);
+        } else {
+          alert("Execution Interrupted: " + data.message);
+        }
+      })
+      .catch(err => {
+        console.error("Network Exception Logged:", err);
+        alert("Transmission Failed. Verify your device connection parameters.");
+      });
+    }
+  </script>
+</body>
+</html>
