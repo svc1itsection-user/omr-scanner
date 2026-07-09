@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Letter 1/2 Crosswise OMR Scanner (30-Items Fixed)</title>
+  <title>Horizontal 1/2 OMR Scanner Terminal</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <style>
     body { background-color: #121214; color: #e1e1e6; padding: 20px; font-family: system-ui, sans-serif; }
-    .scanner-card { max-width: 720px; margin: 0 auto; background: #202024; border-radius: 12px; border: 1px solid #29292e; overflow: hidden; }
-    .video-wrapper { position: relative; width: 100%; padding-top: 56.25%; background: #000; } /* 16:9 wider widescreen ratio for letter width */
+    .scanner-card { max-width: 700px; margin: 0 auto; background: #202024; border-radius: 12px; border: 1px solid #29292e; overflow: hidden; }
+    .video-wrapper { position: relative; width: 100%; padding-top: 56.25%; background: #000; } /* Wide aspect ratio for horizontal cut sheets */
     #videoView, #canvasOutput { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
     #canvasOutput { opacity: 0.85; pointer-events: none; }
     .results-box { padding: 20px; }
@@ -19,8 +19,8 @@
 <body>
 
   <div class="container text-center">
-    <h3 class="my-3 text-success fw-bold">DepEd Crosswise Scanner Terminal</h3>
-    <p class="text-muted small">Optimized exclusively for Letter 1/2 Crosswise Sheet (30 Fixed Items)</p>
+    <h3 class="my-3 text-info fw-bold">Horizontal Cut OMR Scanner</h3>
+    <p class="text-muted small">Hold your cut 1/2 sheet horizontally facing the camera</p>
     
     <div class="scanner-card shadow-lg mb-4">
       <div class="video-wrapper">
@@ -33,7 +33,7 @@
           <span id="engineStatus" class="badge bg-warning text-dark badge-status">Initializing Widescreen Matrix...</span>
           <div class="text-end">
             <label class="small text-muted d-block fw-bold">Master Answer Key (30 Items)</label>
-            <input type="text" id="answerKey" class="form-control form-control-sm text-uppercase fw-bold text-center" value="ABCDABCDABCDABCDABCDABCDABCDAB" maxlength="30" style="width: 320px; letter-spacing: 2px;">
+            <input type="text" id="answerKey" class="form-control form-control-sm text-uppercase fw-bold text-center" value="ABCDABCDABCDABCDABCDABCDABCDAB" maxlength="30" style="width: 290px; letter-spacing: 2px;">
           </div>
         </div>
         
@@ -46,7 +46,7 @@
           </div>
           <div class="col-6 text-end">
             <label class="small text-muted d-block">Computed Score</label>
-            <span id="computedScore" class="fs-2 fw-bold text-info">0</span><span class="text-muted fs-4"> / 30</span>
+            <span id="computedScore" class="fs-2 fw-bold text-success">0</span><span class="text-muted fs-4"> / 30</span>
           </div>
         </div>
 
@@ -65,10 +65,10 @@
     const FIXED_ITEMS = 30;
 
     function initOMRScanner() {
-      document.getElementById('engineStatus').innerText = "Engine Live. Place 3-Column Sheet...";
+      document.getElementById('engineStatus').innerText = "Engine Live. Bring sheet to view...";
       document.getElementById('engineStatus').className = "badge bg-info text-dark badge-status";
       
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 1280, height: 720 } }) // Enforces HD widescreen resolution
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: 1280, height: 720 } }) // Enforces flat widescreen feed
         .then(function(stream) {
           video.srcObject = stream;
           video.play();
@@ -84,7 +84,7 @@
           }, 2000);
         })
         .catch(err => {
-          document.getElementById('engineStatus').innerText = "Camera Configuration Interrupted";
+          document.getElementById('engineStatus').innerText = "Camera Access Error";
           document.getElementById('engineStatus').className = "badge bg-danger badge-status";
         });
     }
@@ -94,9 +94,7 @@
 
       cap.read(src);
       cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
-      
-      // Tuning matrix parameters for wide horizontal column separation grids
-      cv.adaptiveThreshold(dst, dst, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 25, 5);
+      cv.adaptiveThreshold(dst, dst, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 25, 4);
 
       let contours = new cv.MatVector();
       let hierarchy = new cv.Mat();
@@ -110,25 +108,25 @@
         let rect = cv.boundingRect(cnt);
         let aspect = rect.width / rect.height;
 
-        // Custom dimension matching parameters optimized for wide aspect sheets
-        if (rect.width >= 5 && rect.width <= 28 && aspect >= 0.70 && aspect <= 1.30) {
+        // Optimized measurements to read 3-column rows horizontally
+        if (rect.width >= 6 && rect.width <= 32 && aspect >= 0.70 && aspect <= 1.30) {
           detectedBubbles.push(rect);
-          ctx.strokeStyle = '#22c55e'; 
+          ctx.strokeStyle = '#06b6d4'; 
           ctx.lineWidth = 1.5;
           ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
         }
       }
 
-      // Total options = 120 bubbles. Trigger verification lock when 66+ bubbles are verified in frame.
+      // Total options = 120 bubbles. Triggers lock-on when 66+ bubbles match coordinates in frame
       if (detectedBubbles.length >= 66) {
-        document.getElementById('engineStatus').innerText = "Short Crosswise Document Locked";
+        document.getElementById('engineStatus').innerText = "Half-Sheet Document Verified";
         document.getElementById('engineStatus').className = "badge bg-success badge-status";
         
-        // Custom 3-column horizontal-first spatial sorting algorithm
+        // Patterns sorting sequence horizontally (x-axis priority) to handle 3 wide side-by-side columns
         detectedBubbles.sort((a, b) => a.x - b.x || a.y - b.y);
         processGradingLogic();
       } else {
-        document.getElementById('engineStatus').innerText = `Aligning Multi-Column Matrix (${detectedBubbles.length} bubbles)`;
+        document.getElementById('engineStatus').innerText = `Aligning Horizontal Grid (${detectedBubbles.length} bubbles)`;
         document.getElementById('engineStatus').className = "badge bg-warning text-dark badge-status";
       }
 
@@ -150,7 +148,7 @@
         }
       }
 
-      document.getElementById('studentId').innerText = "LRN-301294857"; 
+      document.getElementById('studentId').innerText = "LRN-102948573"; 
       document.getElementById('computedScore').innerText = calculatedScore;
       document.getElementById('saveBtn').classList.remove('d-none');
     }
@@ -172,11 +170,11 @@
       .then(res => res.json())
       .then(data => {
         if (data.status === "success") {
-          alert(`Logged! 30-Item scores recorded for ${payload.studentId}`);
+          alert(`Successfully Logged! Recorded score for ${payload.studentId}`);
           document.getElementById('saveBtn').classList.add('d-none');
         }
       })
-      .catch(err => alert("Data transmission failed. Verify backend configurations."));
+      .catch(err => alert("Data link error. Verify your script URL parameters."));
     }
   </script>
 </body>
